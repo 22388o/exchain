@@ -3,6 +3,7 @@ package mock
 import (
 	"crypto/sha256"
 	"fmt"
+	"math/big"
 
 	abci "github.com/okex/exchain/libs/tendermint/abci/types"
 	cfg "github.com/okex/exchain/libs/tendermint/config"
@@ -48,8 +49,14 @@ func (Mempool) Update(
 		gasUsed += uint64(deliverTxResponses[i].GasUsed)
 	}
 	trace.GetElapsedInfo().AddInfo(trace.GasUsed, fmt.Sprintf("%d", gasUsed))
+	AllGasUsed = new(big.Int).Add(AllGasUsed, new(big.Int).SetInt64(int64(gasUsed)))
 	return nil
 }
+
+var (
+	AllGasUsed = new(big.Int)
+)
+
 func (Mempool) Flush()                        {}
 func (Mempool) FlushAppConn() error           { return nil }
 func (Mempool) TxsAvailable() <-chan struct{} { return make(chan struct{}) }

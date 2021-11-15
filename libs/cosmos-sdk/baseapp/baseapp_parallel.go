@@ -97,6 +97,9 @@ func (app *BaseApp) runTxs(txs [][]byte) []*abci.ResponseDeliverTx {
 			if !s.reRun {
 				app.deliverState.ctx.BlockGasMeter().ConsumeGas(sdk.Gas(res.resp.GasUsed), "unexpected error")
 			}
+			if s.anteErr != nil {
+				deliverTxs[txIndex].GasUsed = 0
+			}
 
 			currentGas += uint64(res.resp.GasUsed)
 			txIndex++

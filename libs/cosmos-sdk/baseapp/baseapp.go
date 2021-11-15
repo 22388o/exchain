@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math/big"
 	"os"
 	"reflect"
 	"runtime/debug"
@@ -678,6 +679,10 @@ func (app *BaseApp) pin(tag string, start bool, mode runTxMode) {
 	}
 }
 
+var (
+	AnteErrGasUsedDiff = new(big.Int)
+)
+
 // runTx processes a transaction within a given execution mode, encoded transaction
 // bytes, and the decoded transaction itself. All state transitions occur through
 // a cached Context depending on the mode provided. State only gets persisted
@@ -712,7 +717,6 @@ func (app *BaseApp) runTx(mode runTxMode, txBytes []byte, tx sdk.Tx, height int6
 	} else {
 		ctx = app.getContextForTx(mode, txBytes)
 	}
-
 
 	ms := ctx.MultiStore()
 
@@ -850,6 +854,11 @@ func (app *BaseApp) runTx(mode runTxMode, txBytes []byte, tx sdk.Tx, height int6
 		}
 
 		if err != nil {
+			if mode == runTxModeDeliver {
+				AnteErrGasUsedDiff = new(big.Int).Add(AnteErrGasUsedDiff, new(big.Int).SetInt64(int64(ctx.GasMeter().GasConsumed())))
+				fmt.Println("anteErrTx", ctx.GasMeter().GasConsumed(), app.deliverState.ctx.BlockHeight(), err)
+			}
+			ctx = ctx.WithGasMeter(sdk.NewInfiniteGasMeter())
 			return gInfo, nil, nil, err
 		}
 
