@@ -858,7 +858,7 @@ func (app *BaseApp) runTx(mode runTxMode, txBytes []byte, tx sdk.Tx, height int6
 				AnteErrGasUsedDiff = new(big.Int).Add(AnteErrGasUsedDiff, new(big.Int).SetInt64(int64(ctx.GasMeter().GasConsumed())))
 				fmt.Println("anteErrTx", ctx.GasMeter().GasConsumed(), app.deliverState.ctx.BlockHeight(), err)
 			}
-			ctx = ctx.WithGasMeter(sdk.NewInfiniteGasMeter())
+			//ctx = ctx.WithGasMeter(sdk.NewInfiniteGasMeter())
 			return gInfo, nil, nil, err
 		}
 
