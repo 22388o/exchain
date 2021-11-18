@@ -2,11 +2,10 @@ package keeper
 
 import (
 	"fmt"
-
 	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
-	"github.com/okex/exchain/x/staking/types"
 	abci "github.com/okex/exchain/libs/tendermint/abci/types"
 	"github.com/okex/exchain/libs/tendermint/libs/log"
+	"github.com/okex/exchain/x/staking/types"
 )
 
 // KickOutAndReturnValidatorSetUpdates shows the main logic when a validator is kicked out of validator-set in an epoch
@@ -129,27 +128,42 @@ func (k Keeper) AppendAbandonedValidatorAddrs(ctx sdk.Context, ConsAddr sdk.Cons
 	abandonedValAddr = append(abandonedValAddr, validator.OperatorAddress)
 	bytes := k.cdc.MustMarshalBinaryLengthPrefixed(abandonedValAddr)
 	ctx.KVStore(k.storeKey).Set(types.ValidatorAbandonedKey, bytes)
+	k.paramCache.setValidatorAbandoned(abandonedValAddr)
 }
 
 // getAbandonedValidatorAddrs gets the abandoned validator addresses
 func (k Keeper) getAbandonedValidatorAddrs(ctx sdk.Context) (abandonedValAddr []sdk.ValAddress) {
+	if data, ok := k.paramCache.getValidatorAbandoned(); ok {
+		return data
+	}
 	bytes := ctx.KVStore(k.storeKey).Get(types.ValidatorAbandonedKey)
 	if len(bytes) == 0 {
 		return
 	}
 
 	k.cdc.MustUnmarshalBinaryLengthPrefixed(bytes, &abandonedValAddr)
+	k.paramCache.setValidatorAbandoned(abandonedValAddr)
 	return
 }
 
 // DeleteAbandonedValidatorAddrs deletes the abandoned validator addresses
 func (k Keeper) DeleteAbandonedValidatorAddrs(ctx sdk.Context) {
 	ctx.KVStore(k.storeKey).Delete(types.ValidatorAbandonedKey)
+	k.paramCache.setValidatorAbandoned([]sdk.ValAddress{})
+
 }
 
 // IsKickedOut tells whether there're jailed validators to kick out in an epoch
 func (k Keeper) IsKickedOut(ctx sdk.Context) bool {
+	if data, ok := k.paramCache.getValidatorAbandoned(); ok {
+		return len(data) != 0
+	}
 	store := ctx.KVStore(k.storeKey)
 	bytes := store.Get(types.ValidatorAbandonedKey)
+	abandonedValAddr := make([]sdk.ValAddress, 0)
+	if len(bytes) != 0 {
+		k.cdc.MustUnmarshalBinaryLengthPrefixed(bytes, &abandonedValAddr)
+	}
+	k.paramCache.setValidatorAbandoned(abandonedValAddr)
 	return len(bytes) != 0
 }

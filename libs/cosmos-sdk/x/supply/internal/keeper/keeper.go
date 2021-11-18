@@ -13,11 +13,31 @@ import (
 
 // Keeper of the supply store
 type Keeper struct {
-	cdc       *codec.Codec
-	storeKey  sdk.StoreKey
-	ak        types.AccountKeeper
-	bk        types.BankKeeper
-	permAddrs map[string]types.PermissionsForAddress
+	cdc         *codec.Codec
+	storeKey    sdk.StoreKey
+	ak          types.AccountKeeper
+	bk          types.BankKeeper
+	permAddrs   map[string]types.PermissionsForAddress
+	paramConfig *paramCache
+}
+
+type paramCache struct {
+	totalSupply map[string]sdk.Dec
+}
+
+func newParamCache() *paramCache {
+	return &paramCache{
+		totalSupply: map[string]sdk.Dec{},
+	}
+}
+
+func (p *paramCache) setTotalSupply(ket string, value sdk.Dec) {
+	p.totalSupply[ket] = value
+}
+
+func (p *paramCache) getTotalSupply(key string) (sdk.Dec, bool) {
+	data, ok := p.totalSupply[key]
+	return data, ok
 }
 
 // NewKeeper creates a new Keeper instance
@@ -29,11 +49,12 @@ func NewKeeper(cdc *codec.Codec, key sdk.StoreKey, ak types.AccountKeeper, bk ty
 	}
 
 	return Keeper{
-		cdc:       cdc,
-		storeKey:  key,
-		ak:        ak,
-		bk:        bk,
-		permAddrs: permAddrs,
+		cdc:         cdc,
+		storeKey:    key,
+		ak:          ak,
+		bk:          bk,
+		permAddrs:   permAddrs,
+		paramConfig: newParamCache(),
 	}
 }
 
@@ -81,4 +102,5 @@ func (k Keeper) ValidatePermissions(macc exported.ModuleAccountI) error {
 // setTokenSupplyAmount sets the supply amount of a token to the store
 func (k Keeper) setTokenSupplyAmount(ctx sdk.Context, tokenSymbol string, supplyAmount sdk.Dec) {
 	ctx.KVStore(k.storeKey).Set(getTokenSupplyKey(tokenSymbol), k.cdc.MustMarshalBinaryLengthPrefixed(supplyAmount))
+	k.paramConfig.setTotalSupply(tokenSymbol, supplyAmount)
 }

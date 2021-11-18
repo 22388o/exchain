@@ -102,6 +102,7 @@ func (k Keeper) StoreOrderIDsMap(ctx sdk.Context, key string, orderIDs []string)
 func (k Keeper) SetLastExpiredBlockHeight(ctx sdk.Context, expiredBlockHeight int64) {
 	store := ctx.KVStore(k.orderStoreKey)
 	store.Set(types.LastExpiredBlockHeightKey, common.Int64ToBytes(expiredBlockHeight)) //lastExpiredBlockHeight
+	k.paramCache.setLastExpiredBlockHeight(expiredBlockHeight)
 }
 
 // ===============================================
@@ -110,6 +111,7 @@ func (k Keeper) SetLastExpiredBlockHeight(ctx sdk.Context, expiredBlockHeight in
 func (k Keeper) setOpenOrderNum(ctx sdk.Context, orderNum int64) {
 	store := ctx.KVStore(k.orderStoreKey)
 	store.Set(types.OpenOrderNumKey, common.Int64ToBytes(orderNum)) //openOrderNum
+	k.paramCache.setOpenOrderNum(orderNum)
 }
 
 // ===============================================
@@ -118,6 +120,7 @@ func (k Keeper) setOpenOrderNum(ctx sdk.Context, orderNum int64) {
 func (k Keeper) setStoreOrderNum(ctx sdk.Context, orderNum int64) {
 	store := ctx.KVStore(k.orderStoreKey)
 	store.Set(types.StoreOrderNumKey, common.Int64ToBytes(orderNum)) //StoreOrderNum
+	k.paramCache.setStoreOrderNum(orderNum)
 }
 
 // ===============================================
@@ -129,6 +132,7 @@ func (k Keeper) SetLastClosedOrderIDs(ctx sdk.Context, orderIDs []string) {
 		store.Delete(types.RecentlyClosedOrderIDsKey)
 	}
 	store.Set(types.RecentlyClosedOrderIDsKey, k.cdc.MustMarshalJSON(orderIDs)) //recentlyClosedOrderIDs
+	k.paramCache.setRecentlyClosedOrderIDs(orderIDs)
 }
 
 // SetOrderIDs sets OrderIDs to diskCache

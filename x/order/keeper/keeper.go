@@ -40,8 +40,76 @@ type Keeper struct {
 
 	// cache data in memory to avoid marshal/unmarshal too frequently
 	// reset cache data in BeginBlock
-	cache     *Cache
-	diskCache *DiskCache
+	cache      *Cache
+	diskCache  *DiskCache
+	paramCache *paramCache
+}
+
+type paramCache struct {
+	param                  map[string]*types.Params
+	recentlyClosedOrderIDs map[string][]string
+	LastExpiredBlockHeight map[string]int64
+	OpenOrderNum           map[string]int64
+	StoreOrderNumKey       map[string]int64
+}
+
+func newParamCache() *paramCache {
+	return &paramCache{
+		param:                  map[string]*types.Params{},
+		recentlyClosedOrderIDs: map[string][]string{},
+		LastExpiredBlockHeight: map[string]int64{},
+		OpenOrderNum:           map[string]int64{},
+		StoreOrderNumKey:       map[string]int64{},
+	}
+}
+
+var (
+	paramKey = "param"
+)
+
+func (p *paramCache) setParam(data *types.Params) {
+	p.param[paramKey] = data
+}
+
+func (p *paramCache) getParam() (*types.Params, bool) {
+	data, ok := p.param[paramKey]
+	return data, ok
+}
+
+func (p *paramCache) setRecentlyClosedOrderIDs(data []string) {
+	p.recentlyClosedOrderIDs[string(types.RecentlyClosedOrderIDsKey)] = data
+}
+
+func (p *paramCache) getRecentlyClosedOrderIDs() ([]string, bool) {
+	data, ok := p.recentlyClosedOrderIDs[string(types.RecentlyClosedOrderIDsKey)]
+	return data, ok
+}
+
+func (p *paramCache) setLastExpiredBlockHeight(data int64) {
+	p.LastExpiredBlockHeight[string(types.LastExpiredBlockHeightKey)] = data
+}
+
+func (p *paramCache) getLastExpiredBlockHeight() (int64, bool) {
+	data, ok := p.LastExpiredBlockHeight[string(types.LastExpiredBlockHeightKey)]
+	return data, ok
+}
+
+func (p *paramCache) setOpenOrderNum(data int64) {
+	p.OpenOrderNum[string(types.OpenOrderNumKey)] = data
+}
+
+func (p *paramCache) getOpenOrderNum() (int64, bool) {
+	data, ok := p.OpenOrderNum[string(types.OpenOrderNumKey)]
+	return data, ok
+}
+
+func (p *paramCache) setStoreOrderNum(data int64) {
+	p.StoreOrderNumKey[string(types.StoreOrderNumKey)] = data
+}
+
+func (p *paramCache) getStoreOrderNum() (int64, bool) {
+	data, ok := p.StoreOrderNumKey[string(types.StoreOrderNumKey)]
+	return data, ok
 }
 
 // NewKeeper creates new instances of the nameservice Keeper
@@ -63,9 +131,10 @@ func NewKeeper(tokenKeeper TokenKeeper, supplyKeeper SupplyKeeper, dexKeeper Dex
 
 		orderStoreKey: ordersStoreKey,
 
-		cdc:       cdc,
-		cache:     NewCache(),
-		diskCache: newDiskCache(),
+		cdc:        cdc,
+		cache:      NewCache(),
+		diskCache:  newDiskCache(),
+		paramCache: newParamCache(),
 	}
 }
 
@@ -284,33 +353,45 @@ func (k Keeper) GetBlockOrderNum(ctx sdk.Context, blockHeight int64) int64 {
 // LastExpiredBlockHeight means that the block height of his expired height
 // list has been processed by expired recently
 func (k Keeper) GetLastExpiredBlockHeight(ctx sdk.Context) int64 {
+	if data, ok := k.paramCache.getLastExpiredBlockHeight(); ok {
+		return data
+	}
 	store := ctx.KVStore(k.orderStoreKey)
 	numBytes := store.Get(types.LastExpiredBlockHeightKey)
 	if numBytes == nil {
 		return 0
 	}
+	k.paramCache.setLastExpiredBlockHeight(common.BytesToInt64(numBytes))
 	return common.BytesToInt64(numBytes)
 }
 
 // GetOpenOrderNum gets OpenOrderNum from KVStore
 // OpenOrderNum means the number of orders currently in the open state
 func (k Keeper) GetOpenOrderNum(ctx sdk.Context) int64 {
+	if data, ok := k.paramCache.getOpenOrderNum(); ok {
+		return data
+	}
 	store := ctx.KVStore(k.orderStoreKey)
 	numBytes := store.Get(types.OpenOrderNumKey)
 	if numBytes == nil {
 		return 0
 	}
+	k.paramCache.setOpenOrderNum(common.BytesToInt64(numBytes))
 	return common.BytesToInt64(numBytes)
 }
 
 // StoreOrderNum means the number of orders currently stored
 // nolint
 func (k Keeper) GetStoreOrderNum(ctx sdk.Context) int64 {
+	if data, ok := k.paramCache.getStoreOrderNum(); ok {
+		return data
+	}
 	store := ctx.KVStore(k.orderStoreKey)
 	numBytes := store.Get(types.StoreOrderNumKey)
 	if numBytes == nil {
 		return 0
 	}
+	k.paramCache.setStoreOrderNum(common.BytesToInt64(numBytes))
 	return common.BytesToInt64(numBytes)
 }
 
@@ -341,6 +422,9 @@ func (k Keeper) addUpdatedOrderID(orderID string) {
 
 // GetLastClosedOrderIDs gets closed order ids in last block
 func (k Keeper) GetLastClosedOrderIDs(ctx sdk.Context) []string {
+	if data, ok := k.paramCache.getRecentlyClosedOrderIDs(); ok {
+		return data
+	}
 	store := ctx.KVStore(k.orderStoreKey)
 	bz := store.Get(types.RecentlyClosedOrderIDsKey)
 	orderIDs := []string{}
@@ -348,6 +432,7 @@ func (k Keeper) GetLastClosedOrderIDs(ctx sdk.Context) []string {
 		return orderIDs
 	}
 	k.cdc.MustUnmarshalJSON(bz, &orderIDs)
+	k.paramCache.setRecentlyClosedOrderIDs(orderIDs)
 	return orderIDs
 }
 
@@ -451,14 +536,19 @@ func (k Keeper) AddCollectedFees(ctx sdk.Context, coins sdk.SysCoins, from sdk.A
 
 // GetParams gets inflation params from the global param store
 func (k Keeper) GetParams(ctx sdk.Context) *types.Params {
+	if data, ok := k.paramCache.getParam(); ok {
+		return data
+	}
 	var param types.Params
 	k.paramSpace.GetParamSet(ctx, &param)
+	k.paramCache.setParam(&param)
 	return &param
 }
 
 // SetParams sets inflation params from the global param store
 func (k Keeper) SetParams(ctx sdk.Context, params *types.Params) {
 	k.paramSpace.SetParamSet(ctx, params)
+	k.paramCache.setParam(params)
 }
 
 // nolint

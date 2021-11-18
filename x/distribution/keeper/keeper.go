@@ -5,8 +5,8 @@ import (
 
 	"github.com/okex/exchain/libs/cosmos-sdk/codec"
 	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
-	"github.com/okex/exchain/x/params"
 	"github.com/okex/exchain/libs/tendermint/libs/log"
+	"github.com/okex/exchain/x/params"
 
 	"github.com/okex/exchain/x/distribution/types"
 )
@@ -22,6 +22,42 @@ type Keeper struct {
 	blacklistedAddrs map[string]bool
 
 	feeCollectorName string // name of the FeeCollector ModuleAccount
+	parasConfig      *paramConfig
+}
+
+type paramConfig struct {
+	feePool     map[string]types.FeePool
+	consendAddr map[string]sdk.ConsAddress
+}
+
+var (
+	feePoolKey  = "FeePool"
+	consAddrKey = "ConsAddress"
+)
+
+func newParamConfig() *paramConfig {
+	return &paramConfig{
+		feePool:     map[string]types.FeePool{},
+		consendAddr: map[string]sdk.ConsAddress{},
+	}
+}
+
+func (p *paramConfig) setFeePool(pool types.FeePool) {
+	p.feePool[feePoolKey] = pool
+}
+
+func (p *paramConfig) getFeePool() (types.FeePool, bool) {
+	data, ok := p.feePool[feePoolKey]
+	return data, ok
+}
+
+func (p *paramConfig) setConsAddress(data sdk.ConsAddress) {
+	p.consendAddr[consAddrKey] = data
+}
+
+func (p *paramConfig) getConsAddress() (sdk.ConsAddress, bool) {
+	data, ok := p.consendAddr[consAddrKey]
+	return data, ok
 }
 
 // NewKeeper creates a new distribution Keeper instance
@@ -49,6 +85,7 @@ func NewKeeper(
 		supplyKeeper:     supplyKeeper,
 		feeCollectorName: feeCollectorName,
 		blacklistedAddrs: blacklistedAddrs,
+		parasConfig:      newParamConfig(),
 	}
 }
 

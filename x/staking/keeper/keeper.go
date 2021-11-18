@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/okex/exchain/x/staking/exported"
 	"github.com/okex/exchain/libs/tendermint/libs/log"
+	"github.com/okex/exchain/x/staking/exported"
 
 	"github.com/okex/exchain/libs/cosmos-sdk/codec"
 	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
@@ -28,6 +28,50 @@ type Keeper struct {
 	paramstore         params.Subspace
 	validatorCache     map[string]cachedValidator
 	validatorCacheList *list.List
+
+	paramCache *paramConfig
+}
+
+type paramConfig struct {
+	ValidatorAbandoned map[string][]sdk.ValAddress
+	Epoch              map[string]uint16
+	LastEposh          map[string]int64
+}
+
+func newParamConfig() *paramConfig {
+	return &paramConfig{
+		ValidatorAbandoned: map[string][]sdk.ValAddress{},
+		Epoch:              map[string]uint16{},
+		LastEposh:          map[string]int64{},
+	}
+
+}
+
+func (p *paramConfig) setValidatorAbandoned(data []sdk.ValAddress) {
+	p.ValidatorAbandoned[string(types.ValidatorAbandonedKey)] = data
+}
+
+func (p *paramConfig) getValidatorAbandoned() ([]sdk.ValAddress, bool) {
+	data, ok := p.ValidatorAbandoned[string(types.ValidatorAbandonedKey)]
+	return data, ok
+}
+
+func (p *paramConfig) setEpoch(data uint16) {
+	p.Epoch[string(types.KeyEpoch)] = data
+}
+
+func (p *paramConfig) getEpoch() (uint16, bool) {
+	data, ok := p.Epoch[string(types.KeyEpoch)]
+	return data, ok
+}
+
+func (p *paramConfig) setLastEpoch(data int64) {
+	p.LastEposh[string(types.KeyTheEndOfLastEpoch)] = data
+}
+
+func (p *paramConfig) getLastEpoch() (int64, bool) {
+	data, ok := p.LastEposh[string(types.KeyTheEndOfLastEpoch)]
+	return data, ok
 }
 
 // NewKeeper creates a new staking Keeper instance
@@ -51,6 +95,7 @@ func NewKeeper(cdc *codec.Codec, key sdk.StoreKey, supplyKeeper types.SupplyKeep
 		hooks:              nil,
 		validatorCache:     make(map[string]cachedValidator, aminoCacheSize),
 		validatorCacheList: list.New(),
+		paramCache:         newParamConfig(),
 	}
 }
 

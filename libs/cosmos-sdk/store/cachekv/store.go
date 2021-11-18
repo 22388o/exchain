@@ -59,6 +59,7 @@ func (store *Store) Get(key []byte) (value []byte) {
 	cacheValue, ok := store.cache[string(key)]
 	if !ok {
 		value = store.parent.Get(key)
+		//fmt.Println("--parent-", hex.EncodeToString(key))
 		store.setCacheValue(key, value, false, false)
 	} else {
 		value = cacheValue.value

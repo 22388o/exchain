@@ -155,6 +155,10 @@ func (k Keeper) BurnCoins(ctx sdk.Context, moduleName string, amt sdk.Coins) err
 
 // GetSupplyByDenom gets the amount of a token supply from the store
 func (k Keeper) GetSupplyByDenom(ctx sdk.Context, denom string) sdk.Dec {
+	if data, ok := k.paramConfig.getTotalSupply(denom); ok {
+		return data
+	}
+
 	tokenSupplyAmount := sdk.ZeroDec()
 	bytes := ctx.KVStore(k.storeKey).Get(getTokenSupplyKey(denom))
 	if bytes == nil {
@@ -162,7 +166,9 @@ func (k Keeper) GetSupplyByDenom(ctx sdk.Context, denom string) sdk.Dec {
 	}
 
 	k.cdc.MustUnmarshalBinaryLengthPrefixed(bytes, &tokenSupplyAmount)
+	k.paramConfig.setTotalSupply(denom, tokenSupplyAmount)
 	return tokenSupplyAmount
+
 }
 
 // inflate adds the amount of a token in the store

@@ -20,8 +20,45 @@ type Keeper struct {
 	supplyKeeper     types.SupplyKeeper
 	feeCollectorName string
 
-	farmModuleName     string
+	farmModuleName         string
 	originalMintedPerBlock sdk.Dec
+	paramCaches            *paramCache
+}
+
+type paramCache struct {
+	param map[string]types.Params
+
+	mintCustom map[string]types.MinterCustom
+}
+
+func newConfig() *paramCache {
+	return &paramCache{
+		param:      map[string]types.Params{},
+		mintCustom: map[string]types.MinterCustom{},
+	}
+}
+
+var (
+	paramKey        = "Params"
+	minterCustomKey = "MinterCustom"
+)
+
+func (p *paramCache) setParam(data types.Params) {
+	p.param[paramKey] = data
+}
+
+func (p *paramCache) setMinter(data types.MinterCustom) {
+	p.mintCustom[minterCustomKey] = data
+}
+
+func (p *paramCache) getParams() (types.Params, bool) {
+	data, ok := p.param[paramKey]
+	return data, ok
+}
+
+func (p *paramCache) getMinter() (types.MinterCustom, bool) {
+	data, ok := p.mintCustom[minterCustomKey]
+	return data, ok
 }
 
 // NewKeeper creates a new mint Keeper instance
@@ -36,14 +73,15 @@ func NewKeeper(
 	}
 
 	return Keeper{
-		cdc:              cdc,
-		storeKey:         key,
-		paramSpace:       paramSpace.WithKeyTable(types.ParamKeyTable()),
-		sk:               sk,
-		supplyKeeper:     supplyKeeper,
-		feeCollectorName: feeCollectorName,
-		farmModuleName:   farmModule,
+		cdc:                    cdc,
+		storeKey:               key,
+		paramSpace:             paramSpace.WithKeyTable(types.ParamKeyTable()),
+		sk:                     sk,
+		supplyKeeper:           supplyKeeper,
+		feeCollectorName:       feeCollectorName,
+		farmModuleName:         farmModule,
 		originalMintedPerBlock: types.DefaultOriginalMintedPerBlock(),
+		paramCaches:            newConfig(),
 	}
 }
 
@@ -77,13 +115,19 @@ func (k Keeper) SetMinter(ctx sdk.Context, minter types.MinterCustom) {
 
 // GetParams returns the total set of minting parameters.
 func (k Keeper) GetParams(ctx sdk.Context) (params types.Params) {
+	if data, ok := k.paramCaches.getParams(); ok {
+		return data
+	}
 	k.paramSpace.GetParamSet(ctx, &params)
+
+	k.paramCaches.setParam(params)
 	return params
 }
 
 // SetParams sets the total set of minting parameters.
 func (k Keeper) SetParams(ctx sdk.Context, params types.Params) {
 	k.paramSpace.SetParamSet(ctx, &params)
+	k.paramCaches.setParam(params)
 }
 
 //______________________________________________________________________

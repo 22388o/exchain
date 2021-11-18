@@ -39,12 +39,16 @@ func (k Keeper) IterateDelegatorWithdrawAddrs(ctx sdk.Context,
 
 // GetFeePool returns the global fee pool distribution info
 func (k Keeper) GetFeePool(ctx sdk.Context) (feePool types.FeePool) {
+	if data, ok := k.parasConfig.getFeePool(); ok {
+		return data
+	}
 	store := ctx.KVStore(k.storeKey)
 	b := store.Get(types.FeePoolKey)
 	if b == nil {
 		panic("Stored fee pool should not have been nil")
 	}
 	k.cdc.MustUnmarshalBinaryLengthPrefixed(b, &feePool)
+	k.parasConfig.setFeePool(feePool)
 	return
 }
 
@@ -53,6 +57,7 @@ func (k Keeper) SetFeePool(ctx sdk.Context, feePool types.FeePool) {
 	store := ctx.KVStore(k.storeKey)
 	b := k.cdc.MustMarshalBinaryLengthPrefixed(feePool)
 	store.Set(types.FeePoolKey, b)
+	k.parasConfig.setFeePool(feePool)
 }
 
 // GetFeePoolCommunityCoins returns the community coins
@@ -62,12 +67,16 @@ func (k Keeper) GetFeePoolCommunityCoins(ctx sdk.Context) sdk.SysCoins {
 
 // GetPreviousProposerConsAddr returns the proposer public key for this block
 func (k Keeper) GetPreviousProposerConsAddr(ctx sdk.Context) (consAddr sdk.ConsAddress) {
+	if data, ok := k.parasConfig.getConsAddress(); ok {
+		return data
+	}
 	store := ctx.KVStore(k.storeKey)
 	b := store.Get(types.ProposerKey)
 	if b == nil {
 		panic("Previous proposer not set")
 	}
 	k.cdc.MustUnmarshalBinaryLengthPrefixed(b, &consAddr)
+	k.parasConfig.setConsAddress(consAddr)
 	return consAddr
 }
 
@@ -76,6 +85,7 @@ func (k Keeper) SetPreviousProposerConsAddr(ctx sdk.Context, consAddr sdk.ConsAd
 	store := ctx.KVStore(k.storeKey)
 	b := k.cdc.MustMarshalBinaryLengthPrefixed(consAddr)
 	store.Set(types.ProposerKey, b)
+	k.parasConfig.setConsAddress(consAddr)
 }
 
 // GetValidatorAccumulatedCommission returns accumulated commission for a validator

@@ -15,11 +15,15 @@ func (k Keeper) AddYieldFarming(ctx sdk.Context, yieldAmt sdk.Coins) error {
 
 // get the minter custom
 func (k Keeper) GetMinterCustom(ctx sdk.Context) (minter types.MinterCustom) {
+	if data, ok := k.paramCaches.getMinter(); ok {
+		return data
+	}
 	store := ctx.KVStore(k.storeKey)
 	b := store.Get(types.MinterKey)
 	if b != nil {
 		k.cdc.MustUnmarshalBinaryLengthPrefixed(b, &minter)
 	}
+	k.paramCaches.setMinter(minter)
 	return
 }
 
@@ -28,6 +32,7 @@ func (k Keeper) SetMinterCustom(ctx sdk.Context, minter types.MinterCustom) {
 	store := ctx.KVStore(k.storeKey)
 	b := k.cdc.MustMarshalBinaryLengthPrefixed(minter)
 	store.Set(types.MinterKey, b)
+	k.paramCaches.setMinter(minter)
 }
 
 func (k Keeper) UpdateMinterCustom(ctx sdk.Context, minter *types.MinterCustom, params types.Params) {
@@ -45,7 +50,6 @@ func (k Keeper) UpdateMinterCustom(ctx sdk.Context, minter *types.MinterCustom, 
 	k.SetMinterCustom(ctx, *minter)
 }
 
-
 //______________________________________________________________________
 
 // GetOriginalMintedPerBlock returns the init tokens per block.
@@ -57,7 +61,6 @@ func (k Keeper) GetOriginalMintedPerBlock() sdk.Dec {
 func (k Keeper) SetOriginalMintedPerBlock(originalMintedPerBlock sdk.Dec) {
 	k.originalMintedPerBlock = originalMintedPerBlock
 }
-
 
 // ValidateMinterCustom validate minter
 func ValidateOriginalMintedPerBlock(originalMintedPerBlock sdk.Dec) error {

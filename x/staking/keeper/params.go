@@ -54,18 +54,26 @@ func (k Keeper) SetParams(ctx sdk.Context, params types.Params) {
 
 // ParamsEpoch returns epoch from paramstore, only update the KeyEpoch after last epoch ends
 func (k Keeper) ParamsEpoch(ctx sdk.Context) (res uint16) {
+	if data, ok := k.paramCache.getEpoch(); ok {
+		return data
+	}
 	k.paramstore.Get(ctx, types.KeyEpoch, &res)
+	k.paramCache.setEpoch(res)
 	return
 }
 
 // GetEpoch returns the epoch for validators updates
 func (k Keeper) GetEpoch(ctx sdk.Context) (epoch uint16) {
+	if data, ok := k.paramCache.getEpoch(); ok {
+		return data
+	}
 	store := ctx.KVStore(k.storeKey)
 	b := store.Get(types.KeyEpoch)
 	if b == nil {
 		return types.DefaultEpoch
 	}
 	k.cdc.MustUnmarshalBinaryLengthPrefixed(b, &epoch)
+	k.paramCache.setEpoch(epoch)
 	return
 }
 
@@ -74,6 +82,7 @@ func (k Keeper) SetEpoch(ctx sdk.Context, epoch uint16) {
 	store := ctx.KVStore(k.storeKey)
 	b := k.cdc.MustMarshalBinaryLengthPrefixed(epoch)
 	store.Set(types.KeyEpoch, b)
+	k.paramCache.setEpoch(epoch)
 }
 
 // IsEndOfEpoch checks whether an epoch is end
@@ -84,12 +93,16 @@ func (k Keeper) IsEndOfEpoch(ctx sdk.Context) bool {
 
 // GetTheEndOfLastEpoch returns the deadline of the current epoch
 func (k Keeper) GetTheEndOfLastEpoch(ctx sdk.Context) (height int64) {
+	if data, ok := k.paramCache.getLastEpoch(); ok {
+		return data
+	}
 	store := ctx.KVStore(k.storeKey)
 	b := store.Get(types.KeyTheEndOfLastEpoch)
 	if b == nil {
 		return int64(0)
 	}
 	k.cdc.MustUnmarshalBinaryLengthPrefixed(b, &height)
+	k.paramCache.setLastEpoch(height)
 	return
 }
 
@@ -98,6 +111,7 @@ func (k Keeper) SetTheEndOfLastEpoch(ctx sdk.Context) {
 	store := ctx.KVStore(k.storeKey)
 	b := k.cdc.MustMarshalBinaryLengthPrefixed(ctx.BlockHeight())
 	store.Set(types.KeyTheEndOfLastEpoch, b)
+	k.paramCache.setLastEpoch(ctx.BlockHeight())
 }
 
 // ParamsMaxValsToAddShares returns the param MaxValsToAddShares
