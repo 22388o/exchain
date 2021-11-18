@@ -127,6 +127,7 @@ func replayBlock(ctx *server.Context, originDataDir string) {
 	if viper.GetBool(sm.FlagParalleledTx) {
 		baseapp.ParaLog.PrintLog()
 	}
+	fmt.Println("all----", sm.GasUsedAll)
 }
 
 // panic if error is not nil
@@ -272,6 +273,9 @@ func doReplay(ctx *server.Context, state sm.State, stateStoreDB dbm.DB,
 		panicError(err)
 		if needSaveBlock {
 			SaveBlock(ctx, originBlockStore, height)
+		}
+		if height >= lastBlockHeight+10 {
+			break
 		}
 	}
 }

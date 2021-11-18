@@ -51,6 +51,7 @@ type Keeper struct {
 
 	// add inner block data
 	innerBlockData BlockInnerData
+	configCache    *configCache
 }
 
 // NewKeeper generates new evm module keeper
@@ -88,6 +89,7 @@ func NewKeeper(
 		Ada:           types.DefaultPrefixDb{},
 
 		innerBlockData: defaultBlockInnerData(),
+		configCache:    &configCache{},
 	}
 	if k.Watcher.Enabled() {
 		ak.SetObserverKeeper(k)
@@ -231,6 +233,11 @@ func (k Keeper) GetAccountStorage(ctx sdk.Context, address common.Address) (type
 
 // GetChainConfig gets block height from block consensus hash
 func (k Keeper) GetChainConfig(ctx sdk.Context) (types.ChainConfig, bool) {
+	if gasConsumed := k.configCache.chainConfigGas; gasConsumed != 0 {
+		ctx.GasMeter().ConsumeGas(gasConsumed, "GetChainConfig Error")
+		return k.configCache.chainConfig, true
+	}
+	startGas := ctx.GasMeter().GasConsumed()
 	store := k.Ada.NewStore(ctx.KVStore(k.storeKey), types.KeyPrefixChainConfig)
 	// get from an empty key that's already prefixed by KeyPrefixChainConfig
 	bz := store.Get([]byte{})
@@ -240,6 +247,7 @@ func (k Keeper) GetChainConfig(ctx sdk.Context) (types.ChainConfig, bool) {
 
 	var config types.ChainConfig
 	k.cdc.MustUnmarshalBinaryBare(bz, &config)
+	k.configCache.setChainConfig(config, ctx.GasMeter().GasConsumed()-startGas)
 	return config, true
 }
 
@@ -260,4 +268,28 @@ func (k *Keeper) SetGovKeeper(gk GovKeeper) {
 func (k *Keeper) IsAddressBlocked(ctx sdk.Context, addr sdk.AccAddress) bool {
 	csdb := types.CreateEmptyCommitStateDB(k.GenerateCSDBParams(), ctx)
 	return csdb.GetParams().EnableContractBlockedList && csdb.IsContractInBlockedList(addr.Bytes())
+}
+
+type configCache struct {
+	params    types.Params
+	paramsGas uint64
+
+	chainConfig    types.ChainConfig
+	chainConfigGas uint64
+}
+
+func (c *configCache) setParams(data types.Params, gasConsumed uint64) {
+	if c.paramsGas != 0 {
+		return
+	}
+	c.params = data
+	c.paramsGas = gasConsumed
+}
+
+func (c *configCache) setChainConfig(data types.ChainConfig, gasConsumed uint64) {
+	if c.chainConfigGas != 0 {
+		return
+	}
+	c.chainConfig = data
+	c.chainConfigGas = gasConsumed
 }

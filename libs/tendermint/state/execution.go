@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+	"math/big"
 	"time"
 
 	abci "github.com/okex/exchain/libs/tendermint/abci/types"
@@ -449,6 +450,10 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 	return nil
 }
 
+var (
+	GasUsedAll = new(big.Int)
+)
+
 // updateState returns a new State updated according to the header and responses.
 func updateState(
 	state State,
@@ -492,6 +497,11 @@ func updateState(
 
 	// TODO: allow app to upgrade version
 	nextVersion := state.Version
+	gasUsed := int64(0)
+	for _, v := range abciResponses.DeliverTxs {
+		gasUsed += v.GasUsed
+	}
+	GasUsedAll = new(big.Int).Add(GasUsedAll, new(big.Int).SetInt64(gasUsed))
 
 	// NOTE: the AppHash has not been populated.
 	// It will be filled on state.Save.
