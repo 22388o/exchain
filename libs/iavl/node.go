@@ -10,8 +10,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	amino "github.com/tendermint/go-amino"
 	"github.com/okex/exchain/libs/tendermint/crypto/tmhash"
+	amino "github.com/tendermint/go-amino"
 )
 
 // Node represents a node in a Tree.
@@ -157,24 +157,27 @@ func (node *Node) has(t *ImmutableTree, key []byte) (has bool) {
 
 // Get a key under the node.
 func (node *Node) get(t *ImmutableTree, key []byte) (index int64, value []byte) {
-	if node.isLeaf() {
-		switch bytes.Compare(node.key, key) {
+	currentNode := node
+GET:
+	if currentNode.isLeaf() {
+		switch bytes.Compare(currentNode.key, key) {
 		case -1:
-			return 1, nil
+			return index + 1, nil
 		case 1:
-			return 0, nil
+			return index, nil
 		default:
-			return 0, node.value
+			return index, currentNode.value
 		}
 	}
 
-	if bytes.Compare(key, node.key) < 0 {
-		return node.getLeftNode(t).get(t, key)
+	if bytes.Compare(key, currentNode.key) < 0 {
+		currentNode = currentNode.getLeftNode(t)
+		goto GET
 	}
-	rightNode := node.getRightNode(t)
-	index, value = rightNode.get(t, key)
-	index += node.size - rightNode.size
-	return index, value
+	rightNode := currentNode.getRightNode(t)
+	index += currentNode.size - rightNode.size
+	currentNode = rightNode
+	goto GET
 }
 
 func (node *Node) getByIndex(t *ImmutableTree, index int64) (key []byte, value []byte) {
