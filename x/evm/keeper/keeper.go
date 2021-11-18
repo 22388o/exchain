@@ -267,7 +267,7 @@ func (k *Keeper) SetGovKeeper(gk GovKeeper) {
 // checks whether the address is blocked
 func (k *Keeper) IsAddressBlocked(ctx sdk.Context, addr sdk.AccAddress) bool {
 	csdb := types.CreateEmptyCommitStateDB(k.GenerateCSDBParams(), ctx)
-	return csdb.GetParams().EnableContractBlockedList && csdb.IsContractInBlockedList(addr.Bytes())
+	return k.GetParams(ctx).EnableContractBlockedList && csdb.IsContractInBlockedList(addr.Bytes())
 }
 
 type configCache struct {
