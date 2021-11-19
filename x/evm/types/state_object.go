@@ -7,13 +7,13 @@ import (
 	"io"
 	"math/big"
 
-	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
-	authexported "github.com/okex/exchain/libs/cosmos-sdk/x/auth/exported"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	ethstate "github.com/ethereum/go-ethereum/core/state"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/okex/exchain/app/types"
+	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
+	authexported "github.com/okex/exchain/libs/cosmos-sdk/x/auth/exported"
 )
 
 const keccak256HashSize = 100000
@@ -387,13 +387,17 @@ func (so *stateObject) GetCommittedState(_ ethstate.Database, key ethcmn.Hash) e
 
 	// otherwise load the value from the KVStore
 	state := NewState(prefixKey, ethcmn.Hash{})
-
-	ctx := so.stateDB.ctx
-	store := so.stateDB.dbAdapter.NewStore(ctx.KVStore(so.stateDB.storeKey), AddressStoragePrefix(so.Address()))
-	rawValue := store.Get(prefixKey.Bytes())
-
-	if len(rawValue) > 0 {
-		state.Value.SetBytes(rawValue)
+	if data, ok := so.stateDB.ctx.Cache().GetStorage(so.address, prefixKey); ok {
+		state.Value.SetBytes(data)
+	} else {
+		ctx := so.stateDB.ctx
+		store := so.stateDB.dbAdapter.NewStore(ctx.KVStore(so.stateDB.storeKey), AddressStoragePrefix(so.Address()))
+		//fmt.Println("?//???????---395", hex.EncodeToString(prefixKey.Bytes()))
+		rawValue := store.Get(prefixKey.Bytes())
+		//fmt.Println("397------end", hex.EncodeToString(prefixKey.Bytes()))
+		if len(rawValue) > 0 {
+			state.Value.SetBytes(rawValue)
+		}
 	}
 
 	so.originStorage = append(so.originStorage, state)

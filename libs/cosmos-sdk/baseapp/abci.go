@@ -146,6 +146,8 @@ func (app *BaseApp) BeginBlock(req abci.RequestBeginBlock) (res abci.ResponseBeg
 		res = app.beginBlocker(app.deliverState.ctx, req)
 	}
 
+	app.cache.Update(app.deliverState.ms)
+
 	// set the signed validators for addition to context in deliverTx
 	app.voteInfos = req.LastCommitInfo.GetVotes()
 	return res

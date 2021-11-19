@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/okex/exchain/libs/cosmos-sdk/codec"
 	"io/ioutil"
 	"os"
 	"reflect"
@@ -161,6 +162,7 @@ type BaseApp struct { // nolint: maligned
 	endLog recordHandle
 
 	parallelTxManage *parallelTxManager
+	cache            *sdk.Cache
 }
 
 type recordHandle func(string)
@@ -187,6 +189,7 @@ func NewBaseApp(
 		trace:          false,
 
 		parallelTxManage: newParallelTxManager(),
+		cache:            sdk.NewCache(nil),
 	}
 	for _, option := range options {
 		option(app)
@@ -200,6 +203,10 @@ func NewBaseApp(
 	app.parallelTxManage.workgroup.Start()
 
 	return app
+}
+
+func (app *BaseApp) SetCdc(cdc *codec.Codec) {
+	app.cache.SetCDC(cdc)
 }
 
 // Name returns the name of the BaseApp.
@@ -568,6 +575,7 @@ func (app *BaseApp) getContextForTx(mode runTxMode, txBytes []byte) sdk.Context 
 			ctx = ctx.WithSigCache(s.signCache)
 		}
 	}
+	ctx = ctx.WithCache(app.cache)
 
 	return ctx
 }
@@ -689,7 +697,8 @@ func (app *BaseApp) pin(tag string, start bool, mode runTxMode) {
 // returned if the tx does not run out of gas and if all the messages are valid
 // and execute successfully. An error is returned otherwise.
 func (app *BaseApp) runTx(mode runTxMode, txBytes []byte, tx sdk.Tx, height int64) (gInfo sdk.GasInfo, result *sdk.Result, msCacheList sdk.CacheMultiStore, err error) {
-
+	//fmt.Println("begin run tx")
+	//defer fmt.Println("end run tx")
 	app.pin(InitCtx, true, mode)
 
 	// NOTE: GasWanted should be returned by the AnteHandler. GasUsed is
@@ -880,6 +889,7 @@ func (app *BaseApp) runTx(mode runTxMode, txBytes []byte, tx sdk.Tx, height int6
 
 	result, err = app.runMsgs(runMsgCtx, msgs, mode)
 	if err == nil && (mode == runTxModeDeliver) {
+		app.cache.Update(msCache)
 		msCache.Write()
 	}
 

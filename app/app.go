@@ -224,6 +224,7 @@ func NewOKExChainApp(
 	bApp.SetAppVersion(version.Version)
 	bApp.SetStartLogHandler(analyzer.StartTxLog)
 	bApp.SetEndLogHandler(analyzer.StopTxLog)
+	bApp.SetCdc(cdc)
 
 	keys := sdk.NewKVStoreKeys(
 		bam.MainStoreKey, auth.StoreKey, staking.StoreKey,

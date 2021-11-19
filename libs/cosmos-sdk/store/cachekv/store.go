@@ -59,7 +59,12 @@ func (store *Store) Get(key []byte) (value []byte) {
 	cacheValue, ok := store.cache[string(key)]
 	if !ok {
 		value = store.parent.Get(key)
-		//fmt.Println("--parent-", hex.EncodeToString(key))
+		if store.parent.GetStoreType() == types.StoreTypeIAVL {
+			//fmt.Println("--parent-", hex.EncodeToString(key), store.GetStoreType(), store.parent.GetStoreType())
+			//if hex.EncodeToString(key) == "05a6b6be4faa178d641dc9f7f19cfc273f39511126f5e591b8eff20d3744c15d54b0ffd01570e0a18b13b57d8dc80dd5aa4ebe1733" {
+			//	debug.PrintStack()
+			//}
+		}
 		store.setCacheValue(key, value, false, false)
 	} else {
 		value = cacheValue.value
@@ -124,6 +129,7 @@ func (store *Store) Write() {
 		}
 	}
 
+	//fmt.Println("135----", len(keys))
 	sort.Strings(keys)
 
 	// TODO: Consider allowing usage of Batch, which would allow the write to
