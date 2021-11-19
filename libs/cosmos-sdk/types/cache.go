@@ -5,6 +5,7 @@ import (
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/okex/exchain/libs/cosmos-sdk/codec"
 	"sync"
+	"time"
 )
 
 type Cache struct {
@@ -28,7 +29,14 @@ func (cache *Cache) Copy() *Cache {
 func (c *Cache) SetCDC(cdc *codec.Codec) {
 	c.cdc = cdc
 }
+
+var (
+	TUpdate = time.Duration(0)
+)
+
 func (c *Cache) Update(ms CacheWrap) {
+
+	tt := time.Now()
 	var wg sync.WaitGroup
 	ms.IteratorCache(func(key, value []byte, isDirty bool) bool {
 		wg.Add(1)
@@ -49,6 +57,7 @@ func (c *Cache) Update(ms CacheWrap) {
 		return true
 	})
 	wg.Wait()
+	TUpdate += time.Now().Sub(tt)
 }
 
 //func (c *Cache) updateGetValidatorAccumulatedCommission(key []byte, value []byte) {
