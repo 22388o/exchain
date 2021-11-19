@@ -42,10 +42,10 @@ type nodeDB struct {
 	opts           Options          // Options to customize for pruning/writing
 	versionReaders map[int64]uint32 // Number of active version readers
 
-	latestVersion  int64
-	nodeCache      map[string]*list.Element // Node cache.
-	nodeCacheSize  int                      // Node cache size limit in elements.
-	nodeCacheQueue *syncList                // LRU queue of cache elements. Used for deletion.
+	latestVersion int64
+	//nodeCache      map[string]*list.Element // Node cache.
+	//nodeCacheSize  int                      // Node cache size limit in elements.
+	//nodeCacheQueue *syncList                // LRU queue of cache elements. Used for deletion.
 
 	orphanNodeCache         map[string]*Node
 	heightOrphansCacheQueue *list.List
@@ -75,12 +75,12 @@ func newNodeDB(db dbm.DB, cacheSize int, opts *Options) *nodeDB {
 		opts = &o
 	}
 	return &nodeDB{
-		db:                      db,
-		opts:                    *opts,
-		latestVersion:           0, // initially invalid
-		nodeCache:               make(map[string]*list.Element),
-		nodeCacheSize:           cacheSize,
-		nodeCacheQueue:          newSyncList(),
+		db:            db,
+		opts:          *opts,
+		latestVersion: 0, // initially invalid
+		//nodeCache:               make(map[string]*list.Element),
+		//nodeCacheSize:           cacheSize,
+		//nodeCacheQueue:          newSyncList(),
 		versionReaders:          make(map[int64]uint32, 8),
 		orphanNodeCache:         make(map[string]*Node),
 		heightOrphansCacheQueue: list.New(),
@@ -116,11 +116,11 @@ func (ndb *nodeDB) GetNode(hash []byte) *Node {
 			return elem
 		}
 		// Check the cache.
-		if elem, ok := ndb.nodeCache[string(hash)]; ok {
-			// Already exists. Move to back of nodeCacheQueue.
-			ndb.nodeCacheQueue.MoveToBack(elem)
-			return elem.Value.(*Node)
-		}
+		//if elem, ok := ndb.nodeCache[string(hash)]; ok {
+		//	Already exists. Move to back of nodeCacheQueue.
+		//ndb.nodeCacheQueue.MoveToBack(elem)
+		//return elem.Value.(*Node)
+		//}
 		if elem, ok := ndb.orphanNodeCache[string(hash)]; ok {
 			return elem
 		}
@@ -539,29 +539,29 @@ func (ndb *nodeDB) traversePrefix(prefix []byte, fn func(k, v []byte)) {
 }
 
 func (ndb *nodeDB) uncacheNode(hash []byte) {
-	if elem, ok := ndb.nodeCache[string(hash)]; ok {
-		ndb.nodeCacheQueue.Remove(elem)
-		delete(ndb.nodeCache, string(hash))
-	}
+	//if elem, ok := ndb.nodeCache[string(hash)]; ok {
+	//	ndb.nodeCacheQueue.Remove(elem)
+	//	delete(ndb.nodeCache, string(hash))
+	//}
 }
 
 // Add a node to the cache and pop the least recently used node if we've
 // reached the cache size limit.
 func (ndb *nodeDB) cacheNode(node *Node) {
-	elem := ndb.nodeCacheQueue.PushBack(node)
-	ndb.nodeCache[string(node.hash)] = elem
-
-	if ndb.nodeCacheQueue.Len() > ndb.nodeCacheSize {
-		oldest := ndb.nodeCacheQueue.Front()
-		hash := ndb.nodeCacheQueue.Remove(oldest).(*Node).hash
-		delete(ndb.nodeCache, string(hash))
-	}
+	//elem := ndb.nodeCacheQueue.PushBack(node)
+	//ndb.nodeCache[string(node.hash)] = elem
+	//
+	//if ndb.nodeCacheQueue.Len() > ndb.nodeCacheSize {
+	//	oldest := ndb.nodeCacheQueue.Front()
+	//	hash := ndb.nodeCacheQueue.Remove(oldest).(*Node).hash
+	//	delete(ndb.nodeCache, string(hash))
+	//}
 }
 
 func (ndb *nodeDB) cacheNodeByCheck(node *Node) {
-	if _, ok := ndb.nodeCache[string(node.hash)]; !ok {
-		ndb.cacheNode(node)
-	}
+	//if _, ok := ndb.nodeCache[string(node.hash)]; !ok {
+	//	ndb.cacheNode(node)
+	//}
 }
 
 // Write to disk.
